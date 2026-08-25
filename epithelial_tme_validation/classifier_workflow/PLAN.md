@@ -64,25 +64,84 @@ Standard pattern from `current_workflow/METHODS.md` /
 confusion matrix on the held-out test donors, reported both pooled and split
 by `source_atlas` (per point 4).
 
-## 6. ISP screen — open decision before this runs
+## 6. ISP screen — zero-shot vs. fine-tuned: decided
 
-**Zero-shot vs. fine-tuned Geneformer**, see the top-level session plan notes
-for the full trade-off writeup. Every prior ISP screen in this family
-(T-cell work in both siblings, the archived V1 epithelial classifier) used
-the fine-tuned-model approach; this repo's cross-atlas design is a good
-occasion to also run the zero-shot variant and compare, rather than
-defaulting silently. **Decide and record the choice here before running
-anything**, with the reasoning, not just the result.
+**Decision: fine-tuned is primary; zero-shot is a secondary, orthogonal
+validation check on top hits, not a competing primary method.**
 
-Once decided: genome-wide or targeted-panel deletion/overexpression (design
-mirrors the sibling repos' `perturbation_workflow/`), directional comparisons
-among the four disease states (up to 12 directed pairs for 4 classes, likely
-prioritized rather than all-12 -- e.g. LUAD<->LUSC<->SCLC<->normal along the
-axes most clinically relevant first).
+**Why.** `InSilicoPerturber`'s goal-state-shift mode measures movement toward
+class centroids -- that is only a meaningful signal if the embedding space
+already organizes cells along those classes. A pretrained (zero-shot) model
+has no guarantee of that; it was never asked to separate LUAD/LUSC/SCLC/
+normal specifically. Fine-tuning creates that structure by construction,
+which is exactly why every prior ISP screen in this project family (both
+T-cell repos, the archived V1 epithelial classifier) used it, and why it
+should again here. The usual worry about fine-tuned ISP -- that a shift
+reflects something the classifier learned as a shortcut rather than real
+biology -- is not a blind spot in this design: it is precisely what this
+family's existing housekeeping-gene, donor-consistency, and
+ambient-contamination review methodology (`geneformer-sclc-tcell`'s HK-gene
+review, `primary_test_perturbation`'s donor-consistency checks) already
+exists to catch, and that methodology carries over unchanged.
+
+Zero-shot's genuine value is as an **independent cross-check**, the same role
+`geneformer-sclc-tcell`'s spatial (Visium) validation plays for its ISP
+hits: if a fine-tuned-model hit's shift direction is *also* detectable, even
+weakly, in the pretrained embedding, that is evidence the classifier learned
+something real rather than a classifier-specific artifact. It is not run as
+a full parallel genome-wide screen -- only as a check on whatever the
+fine-tuned screen's top hits turn out to be.
+
+### Pilot test (designed, not run) to confirm this empirically before the full screen
+
+Three small, cheap stages -- meant to catch a bad assumption before real GPU
+time is spent on the full donor-disjoint fine-tune + genome-wide screen.
+
+**Stage A -- zero-shot separability sanity check (cheapest, do first).**
+Sample ~500 cells per disease state (2,000 total, simple per-class random
+sample, not the full donor-disjoint machinery -- this is a diagnostic, not a
+result), tokenize, extract CLS embeddings from the **pretrained** Geneformer
+V2-104M with no fine-tuning. Fit a quick cross-validated linear probe
+(logistic regression) on the frozen embeddings and report per-class
+recall/macro-F1, plus silhouette score against `disease_state`. This answers
+the single most decision-relevant empirical question directly: does the
+pretrained embedding separate these four states *at all*? No fine-tuning, no
+GPU training run -- one forward pass plus an `sklearn` fit.
+- If separability is near chance: zero-shot has nothing to offer even as a
+  validation signal -- drop it, go fine-tuned-only, note why in this file.
+- If separability is real but weaker than what the fine-tuned classifier
+  achieves (Stage B): confirms the "fine-tuned primary, zero-shot orthogonal
+  check" design as planned.
+- If zero-shot separability is surprisingly close to fine-tuned: worth
+  reopening the primary-method question -- unexpected, but the test should
+  be honest enough to catch it rather than assume the answer.
+
+**Stage B -- same metric, folded into the real fine-tune (no separate
+throwaway model).** Once section 4/5's actual fine-tuned classifier exists,
+compute the identical silhouette-score/embedding-separability metric on its
+held-out test embeddings and report it side-by-side with Stage A's number in
+the held-out evaluation report (section 5). Deliberately not a separate pilot
+fine-tune -- training a disposable model twice wastes real GPU time for no
+extra information.
+
+**Stage C -- small-panel ISP concordance test (the actual zero-shot-vs-
+fine-tuned test for the ISP question specifically, not just classification).**
+A tiny gene panel (~15-20 genes with strong prior expectation from the V1
+work and this repo's own data -- e.g. `ASCL1`, `NEUROD1`, `DLL3`, `MYC`,
+`POU2F3`, `B2M`, `CD274` -- not the full genome), ~200-500 cells per source
+disease state (small, not the full held-out population). Run
+`InSilicoPerturber` in **both** modes (pretrained/zero-shot and the Stage B
+fine-tuned model) on this same small panel and cell subset, and compare
+shift direction and relative magnitude per gene between the two. This is the
+apples-to-apples check for the actual decision: do the two methods broadly
+agree on direction for genes with strong priors? Reasonable agreement
+supports using zero-shot as a lightweight cross-check on the full fine-tuned
+screen's top hits later, the way this section already commits to; systematic
+disagreement would be worth understanding before trusting either.
 
 ## What this does not do
 
-- Does not run any of the above yet.
-- Does not decide the zero-shot-vs-fine-tuned question (see point 6).
+- Does not run any of the above yet -- including the pilot (Stages A/B/C are
+  designed here, not executed).
 - Does not touch TME/non-cancer compartments -- see
   [`../tme_composition/PLAN.md`](../tme_composition/PLAN.md) (Phase 3).
