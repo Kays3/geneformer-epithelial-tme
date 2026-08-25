@@ -1,0 +1,315 @@
+Integrated Geneformer Report: T-cell and Epithelial Analyses
+================================================================
+
+Prepared for: medical collaborators, pathology collaborators, and translational research team
+Datasets: lung single-cell RNA-seq dataset containing normal lung, LUAD, and SCLC samples
+Analyses integrated: T-cell disease-state analysis and epithelial/tumor-cell disease-state analysis
+
+1. Executive Summary
+--------------------
+
+We performed two complementary Geneformer analyses on lung single-cell RNA-seq data:
+
+1. T-cell analysis:
+   - Focused on disease-associated immune states across normal lung, LUAD, and SCLC.
+   - Geneformer detected disease-associated T-cell signal, but classification was only moderate.
+   - The model tended to classify many normal and SCLC T cells as LUAD, suggesting substantial overlap among tumor-associated immune programs.
+
+2. Epithelial analysis:
+   - Focused on tumor epithelial cells from LUAD and SCLC.
+   - Geneformer strongly distinguished LUAD from SCLC epithelial cells.
+   - The epithelial classifier showed much stronger disease separation than the T-cell classifier.
+   - In silico perturbation identified candidate genes whose simulated overexpression shifted LUAD epithelial cells toward an SCLC-like state.
+
+Overall conclusion:
+The strongest disease-specific transcriptional signal is in epithelial tumor cells. T cells show disease-associated immune remodeling, but the T-cell states overlap substantially across LUAD and SCLC. This supports a biological model in which tumor epithelial identity drives lineage-specific disease separation, while the immune compartment reflects a more shared cancer-associated microenvironment.
+
+2. Starting Dataset
+-------------------
+
+The full lung cancer single-cell dataset contained approximately:
+- 147,137 cells
+- 22,021 genes
+
+Major disease groups included:
+- small cell lung carcinoma (SCLC)
+- lung adenocarcinoma (LUAD)
+- normal lung
+
+The project analyzed two major compartments:
+- T cells, representing the immune microenvironment
+- epithelial cells, representing the malignant/tumor compartment
+
+3. T-cell Geneformer Analysis
+-----------------------------
+
+3.1 Biological question
+
+Can T-cell transcriptomes distinguish normal lung, LUAD, and SCLC disease states?
+
+This question is clinically relevant because T cells reflect tumor immune microenvironment remodeling and may relate to immune checkpoint inhibitor response.
+
+3.2 Model setup
+
+The T-cell classifier was trained to predict:
+- normal
+- lung adenocarcinoma
+- small cell lung carcinoma
+
+from T-cell transcriptomes.
+
+Patient-level splitting was used to reduce donor leakage.
+
+3.3 Key performance
+
+The T-cell classifier achieved:
+- Accuracy: approximately 0.661
+- Macro-F1: approximately 0.499
+
+The confusion matrix showed:
+- LUAD T cells were most often classified correctly.
+- Many SCLC T cells were misclassified as LUAD.
+- Many normal T cells were also misclassified as LUAD.
+
+3.4 Interpretation
+
+The T-cell model detected disease-related immune signal, but disease separation was incomplete. The dominant LUAD prediction pattern suggests either:
+- class imbalance,
+- shared tumor-associated immune programs across lung cancers,
+- or insufficiently distinct T-cell states between LUAD and SCLC.
+
+Clinically, this implies that T cells alone may not robustly identify tumor lineage, but they likely capture broader immune microenvironment remodeling.
+
+4. Epithelial Geneformer Analysis
+---------------------------------
+
+4.1 Biological question
+
+Can epithelial tumor-cell transcriptomes distinguish LUAD from SCLC, and can perturbation analysis identify genes associated with LUAD-to-SCLC-like transition?
+
+4.2 Data preparation
+
+The epithelial analysis filtered the full dataset to lung-derived epithelial cells.
+
+The main two-class epithelial subset included:
+- LUAD epithelial cells
+- SCLC epithelial cells
+
+The reported epithelial subset contained:
+- 31,258 epithelial cells
+- 22,021 genes
+
+Disease composition:
+- LUAD epithelial cells: 5,270 cells from 16 donors
+- SCLC epithelial cells: 25,988 cells from 9 donors
+
+4.3 Geneformer tokenization
+
+The epithelial subset was tokenized using Geneformer V1. Metadata retained for downstream analysis included:
+- cell type
+- disease
+- donor/individual identifier
+- sex
+- age
+- tissue
+
+4.4 LUAD vs SCLC epithelial classifier
+
+The main epithelial classifier predicted:
+- lung adenocarcinoma
+- small cell lung carcinoma
+
+The notebook reported strong validation performance:
+- Validation accuracy: 0.951
+- Validation macro-F1: 0.941
+- Validation loss: 0.221
+- Training loss: 0.0395
+
+4.5 Interpretation
+
+This strong performance indicates that Geneformer learned robust disease-specific epithelial transcriptional programs. This is biologically plausible because LUAD and SCLC differ strongly in tumor lineage, differentiation state, and neuroendocrine identity.
+
+Compared with the T-cell classifier, epithelial cells contained much stronger disease-lineage information.
+
+5. Exploratory Three-Class Epithelial Classifier
+------------------------------------------------
+
+The notebook also trained a classifier including:
+- normal epithelial cells
+- LUAD epithelial cells
+- SCLC epithelial cells
+
+Reported validation performance:
+- Validation accuracy: 0.850
+- Validation macro-F1: 0.747
+
+This was lower than the LUAD/SCLC two-class classifier, which is expected because the three-class problem is more complex and normal epithelial samples were less abundant.
+
+Important caveat:
+The three-class epithelial split appeared to have possible donor overlap/leakage in the notebook output. Therefore, the three-class epithelial result should be considered exploratory until rerun with strict donor-exclusive splitting.
+
+6. Epithelial Embedding Analysis
+--------------------------------
+
+Fine-tuned Geneformer embeddings were extracted from the LUAD/SCLC epithelial classifier.
+
+Embedding output:
+- 31,258 epithelial cells
+- 258 embedding columns
+
+These embeddings represent each epithelial cell in a learned disease-aware latent space. They provide the basis for visualization and perturbation experiments.
+
+7. Epithelial In Silico Perturbation
+------------------------------------
+
+7.1 Biological question
+
+Which gene overexpression perturbations shift LUAD epithelial cells toward an SCLC-like transcriptional state?
+
+This is relevant for studying:
+- LUAD-to-SCLC transformation,
+- tumor lineage plasticity,
+- neuroendocrine transition,
+- therapy resistance mechanisms.
+
+7.2 Perturbation setup
+
+Transition modeled:
+- Start state: lung adenocarcinoma
+- Goal state: small cell lung carcinoma
+- Perturbation type: overexpression
+- Genes perturbed: all detected genes
+- Model: fine-tuned Geneformer epithelial classifier
+- Max cells: 2,500
+
+7.3 Perturbation output
+
+The perturbation result table included:
+- 15,531 genes
+- shift toward the SCLC goal state
+- FDR
+- number of detections
+- significance flag
+
+After filtering:
+- Goal_end_FDR < 0.05
+- N_Detections > 100
+
+the notebook reported 1,059 significant, sufficiently detected genes.
+
+7.4 Example positive-shift genes
+
+Genes whose overexpression shifted LUAD cells toward the SCLC goal state included:
+- SFTPC
+- TPT1
+- SLPI
+- PTMA
+- ACTB
+
+These should be interpreted cautiously. Some are epithelial-lineage or secretory markers, while others are broadly expressed housekeeping/proliferation-associated genes.
+
+7.5 Example negative-shift genes
+
+Genes with negative shifts included:
+- B2M
+- S100A9
+- FTH1
+- RALGAPA2
+- ITGB8
+
+Negative shift means simulated overexpression moved LUAD epithelial cells away from the SCLC goal state in the Geneformer latent space.
+
+8. Integrated Interpretation
+----------------------------
+
+8.1 Cross-compartment comparison
+
+T-cell compartment:
+- Moderate disease classification
+- Strong overlap between tumor-associated immune states
+- Useful for studying immune remodeling and ICI biology
+
+Epithelial compartment:
+- Strong LUAD vs SCLC separation
+- Strong tumor-lineage signal
+- More suitable for studying lineage plasticity and LUAD-to-SCLC transition
+
+8.2 Biological model
+
+The analyses support the following model:
+
+Tumor epithelial cells carry the primary disease-lineage signal.
+T cells reflect the downstream immune response to cancer and show shared tumor-associated programs across LUAD and SCLC.
+
+This means:
+- epithelial Geneformer analysis is better for tumor identity and lineage transition,
+- T-cell Geneformer analysis is better for immune microenvironment and immunotherapy-related hypotheses.
+
+9. Clinical and Translational Relevance
+---------------------------------------
+
+For medical collaborators:
+- Geneformer can separate LUAD and SCLC very well using epithelial tumor-cell transcriptomes.
+- T-cell states carry disease information but are less specific to tumor lineage.
+- Perturbation analysis can nominate candidate genes linked to tumor-state transitions, but these are computational predictions.
+
+For pathology collaborators:
+- The epithelial classifier supports strong transcriptional separation between LUAD and SCLC tumor cells.
+- This aligns with the known biological distinction between glandular epithelial differentiation and neuroendocrine SCLC lineage.
+- Perturbation results may help prioritize markers for further immunohistochemistry, spatial transcriptomics, or validation in independent datasets.
+
+10. Limitations
+---------------
+
+Major limitations:
+1. Geneformer V1 was used in the epithelial notebook; future work should compare V2 104M.
+2. The epithelial LUAD/SCLC subset was imbalanced by both cell count and donor count.
+3. Test metrics were not consistently saved in the notebook outputs.
+4. The exploratory three-class epithelial classifier may have donor leakage.
+5. Perturbation results are computational predictions and not direct experimental evidence.
+6. Broadly expressed genes may appear as significant perturbation hits because of high detection frequency.
+7. External validation datasets were not yet included.
+
+11. Recommended Next Steps
+--------------------------
+
+Highest-priority technical steps:
+1. Re-run both T-cell and epithelial analyses using a standardized run folder structure.
+2. Apply strict donor-exclusive train/eval/test splits.
+3. Save all metrics, confusion matrices, and prediction plots as CSV/JSON/PDF.
+4. Repeat training across multiple random seeds.
+5. Compare Geneformer V1 and V2.
+
+Highest-priority biological steps:
+1. For epithelial analysis, focus on known SCLC lineage factors:
+   - ASCL1
+   - NEUROD1
+   - POU2F3
+   - YAP1
+   - MYC family genes
+   - NOTCH pathway genes
+   - RB1 and TP53 pathway-associated programs
+
+2. For T-cell analysis, focus on immune checkpoint and exhaustion programs:
+   - PDCD1
+   - CTLA4
+   - TIGIT
+   - LAG3
+   - IFNG
+   - TNF
+   - CXCL13
+   - TOX
+
+3. Perform pathway enrichment on positive- and negative-shift perturbation genes separately.
+
+4. Validate top candidates using:
+   - independent single-cell datasets,
+   - spatial transcriptomics,
+   - immunohistochemistry,
+   - perturbation experiments,
+   - known LUAD-to-SCLC transformation cohorts.
+
+12. Suggested Collaborator Summary
+----------------------------------
+
+We used Geneformer to analyze two compartments from lung cancer single-cell RNA-seq data: T cells and epithelial tumor cells. T-cell classification across normal lung, LUAD, and SCLC showed moderate performance, suggesting that immune cells carry disease-associated signals but also share common cancer-associated programs across tumor types. In contrast, epithelial tumor cells showed strong LUAD-vs-SCLC separation, with validation accuracy around 95% and macro-F1 around 94%. This indicates that tumor epithelial cells encode the strongest disease-lineage signal. In silico perturbation of epithelial cells identified candidate genes whose simulated overexpression shifts LUAD cells toward an SCLC-like state, nominating possible regulators of lineage plasticity and transformation. These results are preliminary and hypothesis-generating, but they support Geneformer as a useful framework for integrating tumor-cell identity, immune microenvironment remodeling, and computational perturbation in lung cancer.

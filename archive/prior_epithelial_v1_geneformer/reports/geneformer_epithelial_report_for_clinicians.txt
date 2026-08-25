@@ -1,0 +1,293 @@
+Geneformer Epithelial Cell Analysis Report
+LUAD vs SCLC and LUAD-to-SCLC Transition
+
+Prepared for: medical collaborators and research team
+Input notebook: example_epithelial.ipynb
+
+1. Executive Summary
+
+This notebook performed a Geneformer analysis of lung-derived epithelial cells from a single-cell RNA-seq dataset containing lung adenocarcinoma (LUAD), small cell lung carcinoma (SCLC), and normal lung samples.
+
+The main epithelial analysis focused on malignant epithelial cells from LUAD and SCLC. The analysis asked whether Geneformer could distinguish LUAD epithelial transcriptional states from SCLC epithelial transcriptional states, and then used in silico gene overexpression to ask which genes would shift LUAD epithelial embeddings toward an SCLC-like state.
+
+The workflow successfully:
+- loaded the full lung cancer single-cell dataset;
+- filtered it to lung epithelial cells;
+- created a two-class LUAD vs SCLC epithelial subset;
+- tokenized epithelial cell transcriptomes for Geneformer;
+- fine-tuned a Geneformer cell classifier;
+- extracted epithelial cell embeddings;
+- performed all-gene in silico overexpression perturbation;
+- generated ranked perturbation candidates for LUAD-to-SCLC state shift.
+
+The strongest biological interpretation is that Geneformer detected a clear disease-associated transcriptional distinction between LUAD and SCLC epithelial cells. The LUAD-vs-SCLC epithelial classifier showed high validation performance, and perturbation analysis nominated several genes whose simulated overexpression shifted LUAD epithelial cells toward the SCLC goal state. These results are hypothesis-generating and should be interpreted with attention to donor imbalance, limited SCLC donor count, and the computational nature of perturbation.
+
+2. Data Summary
+
+The starting AnnData object contained:
+- 147,137 cells
+- 22,021 genes
+
+Across the full dataset, disease composition was:
+
+Disease                         Cells      Donors
+lung adenocarcinoma             57,679     21
+small cell lung carcinoma       77,143     20
+normal                          12,315      4
+
+The main epithelial analysis retained lung-derived epithelial cells from LUAD and SCLC only.
+
+Main epithelial subset:
+
+Disease                         Epithelial cells    Donors
+lung adenocarcinoma                       5,270        16
+small cell lung carcinoma                25,988         9
+
+Total main epithelial subset:
+- 31,258 epithelial cells
+- 22,021 genes
+
+The notebook also created a second epithelial subset including normal lung epithelial cells.
+
+Three-class epithelial tokenized subset:
+- 32,109 epithelial cells
+- disease states: normal, LUAD, SCLC
+
+The normal epithelial group was much smaller and showed donor-label overlap in the donor split table, so the LUAD-vs-SCLC epithelial analysis is the cleaner primary result.
+
+3. Data Preprocessing
+
+The notebook simplified the AnnData object by retaining essential metadata:
+- donor_id
+- cell_id
+- cell_type
+- disease
+- sex
+- age
+- tissue
+- n_counts
+- filter_pass
+
+Age was extracted from the development_stage field, for example converting strings such as "77-year-old stage" into numeric age.
+
+Geneformer-required fields were prepared:
+- n_counts: total counts per cell
+- filter_pass: inclusion flag
+- ensembl_id: Ensembl gene identifiers from AnnData var index
+
+The main LUAD/SCLC epithelial subset was saved as:
+- input_data/adata_sub.h5ad
+
+The three-class epithelial subset was saved as:
+- input_data3/adata_sub3.h5ad
+
+4. Geneformer Tokenization
+
+The LUAD/SCLC epithelial subset was tokenized using Geneformer V1.
+
+Tokenizer settings:
+- model version: V1
+- chunk size: 512
+- model input size: 1024
+- nproc: 8
+
+Retained tokenized metadata:
+- cell_type
+- cell_id
+- disease
+- individual, derived from donor_id
+- sex
+- age
+
+Main LUAD/SCLC tokenized dataset:
+- output_data/cm_tokenized.dataset
+- 31,258 tokenized epithelial cells
+- tokenized example length: 2,048 input IDs
+
+Three-class tokenized dataset:
+- output_data3/cm_tokenized3.dataset
+- 32,109 tokenized epithelial cells
+
+5. Main Disease Classifier: LUAD vs SCLC Epithelial Cells
+
+A Geneformer cell classifier was fine-tuned to classify epithelial cells as:
+- lung adenocarcinoma
+- small cell lung carcinoma
+
+Model settings:
+- Geneformer V1 10M model
+- one training epoch
+- learning rate: 1e-4
+- batch size: 12
+- freeze_layers: 3
+- one cross-validation split
+- forward batch size: 32
+
+Donor-level split used in the notebook:
+
+Train donors:
+RU1057, RU1311, RU1229, RU1262, RU1195, RU1135, RU661, RU1181, RU1128, RU653, RU675, RU426, RU1271, RU1170, RU1144, RU1061
+
+Eval donors:
+RU684, RU1108, RU1134, RU682
+
+Test donors:
+RU1145, RU1038, RU676, RU1137, RU1066
+
+Validation metrics reported in the notebook:
+- training loss: 0.039500
+- validation loss: 0.221380
+- validation accuracy: 0.951282
+- validation macro-F1: 0.940971
+
+Interpretation:
+The classifier performed very strongly on the validation split, suggesting that LUAD and SCLC epithelial cells have separable transcriptional states in Geneformer representation space. Because epithelial tumor cells are expected to carry stronger tumor-intrinsic disease signal than immune cells, this high performance is biologically plausible.
+
+The test evaluation cell completed successfully, but exact test accuracy and macro-F1 values were not displayed in the saved notebook output. The confusion matrix and prediction plots were generated by the notebook and should be inspected directly if the output folders are available in the execution environment.
+
+6. Exploratory Three-Class Epithelial Classifier
+
+The notebook also trained a second classifier using epithelial cells from:
+- normal lung
+- lung adenocarcinoma
+- small cell lung carcinoma
+
+Validation metrics reported in the notebook:
+- training loss: 0.100200
+- validation loss: 0.315756
+- validation accuracy: 0.849627
+- validation macro-F1: 0.746788
+
+Interpretation:
+Performance was lower than the two-class LUAD/SCLC epithelial model, which is expected because adding normal epithelial cells creates a more complex and imbalanced problem.
+
+Important caveat:
+The printed donor split for the three-class run showed donor IDs repeated across splits. For example, RU682 appeared in both train and eval, RU684 appeared more than once in train, and RU675 appeared in both train and test. This suggests possible donor leakage caused by donors having multiple disease labels in the donor-disease table. This three-class result should therefore be considered exploratory until strict donor-exclusive splitting is applied.
+
+7. Embedding Analysis
+
+The fine-tuned two-class LUAD/SCLC epithelial classifier was used to extract embeddings.
+
+Embedding output:
+- 31,258 epithelial cells
+- 258 embedding columns
+
+The notebook generated:
+- UMAP embedding plot
+- heatmap embedding plot
+
+Interpretation:
+The embedding step confirms that Geneformer produced cell-level epithelial representations from the fine-tuned model. These embeddings provide the latent space used for the downstream in silico perturbation experiment.
+
+8. In Silico Perturbation
+
+The perturbation analysis modeled an epithelial disease-state transition:
+- start state: lung adenocarcinoma
+- goal state: small cell lung carcinoma
+- alternate states: none
+
+Perturbation setup:
+- perturbation type: overexpress
+- genes perturbed: all detected genes
+- model type: CellClassifier
+- number of classes: 2
+- maximum cells for perturbation: 2,500
+- embedding layer: -1
+- forward batch size: 256
+- model version: V1
+
+Meaning:
+The analysis asked which simulated gene overexpression events move LUAD epithelial cells closer to the SCLC epithelial state in Geneformer embedding space. This is best interpreted as a computational screen for candidate genes or programs associated with SCLC-like transition, lineage plasticity, or LUAD/SCLC transcriptional divergence.
+
+9. Perturbation Results
+
+The perturbation result table contained:
+- 15,531 genes
+- Gene and gene name
+- Ensembl ID
+- shift toward the SCLC goal state
+- p-value and FDR for goal-state shift
+- number of detections
+- significance flag
+
+After filtering for:
+- Goal_end_FDR < 0.05
+- N_Detections > 100
+
+the notebook reported:
+- 1,059 significant, sufficiently detected genes
+
+Examples of positive shifts toward the SCLC goal state included:
+
+Gene      Ensembl ID          Shift_to_goal_end    FDR              Detections
+SFTPC     ENSG00000168484          0.002848        2.03e-28          588
+TPT1      ENSG00000133112          0.002369        1.20e-74        1,207
+SLPI      ENSG00000124107          0.002029        5.21e-22          803
+PTMA      ENSG00000187514          0.001782        6.17e-68        1,139
+ACTB      ENSG00000075624          0.001767        1.30e-90          999
+
+Examples of negative shifts, among significant and sufficiently detected genes, included:
+
+Gene      Ensembl ID          Shift_to_goal_end    FDR              Detections
+ITGB8     ENSG00000105855         -0.000506        4.53e-02          120
+RALGAPA2  ENSG00000188559         -0.000570        2.25e-02          118
+FTH1      ENSG00000167996         -0.000884        2.67e-120       1,229
+S100A9    ENSG00000163220         -0.001563        2.12e-34          228
+B2M       ENSG00000166710         -0.003171        0.00e+00        1,104
+
+Interpretation of example hits:
+- SFTPC is a lung epithelial lineage marker and may reflect alveolar epithelial identity or lineage-state differences between LUAD and SCLC-like epithelial states.
+- SLPI is secretory epithelial-associated and may reflect epithelial differentiation or inflammatory barrier programs.
+- TPT1, PTMA, and ACTB are broadly expressed genes; their high detection counts make the statistics stable, but biological specificity requires caution.
+- B2M, S100A9, and FTH1 are immune/stress/antigen-presentation or inflammatory-associated genes; negative shift values suggest their overexpression moves cells away from the SCLC goal state in this model.
+
+These are computational candidates, not validated drivers. Genes with broad housekeeping roles or very high expression should be deprioritized unless supported by independent biological evidence.
+
+10. Biological Interpretation
+
+The epithelial analysis supports three preliminary conclusions:
+
+1. LUAD and SCLC epithelial cells are strongly separable by Geneformer.
+The two-class epithelial classifier achieved validation accuracy of 0.951 and macro-F1 of 0.941. This suggests robust tumor-intrinsic transcriptional differences between LUAD and SCLC epithelial cells.
+
+2. Geneformer embeddings can support LUAD-to-SCLC transition hypotheses.
+The perturbation analysis specifically modeled LUAD epithelial cells moving toward the SCLC epithelial state, which is aligned with questions about lineage plasticity and SCLC-like transformation.
+
+3. Perturbation hits require biological filtering.
+The significant list is large, with 1,059 genes passing FDR and detection filters. Many top genes are abundant epithelial or housekeeping genes. Prioritization should focus on genes with known relevance to lung epithelial lineage, neuroendocrine transition, cell-cycle state, MYC/TP53/RB1 biology, or SCLC transformation.
+
+11. Limitations
+
+Major limitations:
+- The main LUAD/SCLC epithelial subset is imbalanced: 25,988 SCLC cells vs 5,270 LUAD cells.
+- Donor counts are also imbalanced: 9 SCLC donors vs 16 LUAD donors.
+- The model was trained for only one epoch.
+- Geneformer V1 was used; a future run could compare V2.
+- Hyperparameter optimization was not performed.
+- Test metrics were not printed in the saved notebook output.
+- The three-class epithelial classifier showed possible donor leakage and should not be treated as final.
+- In silico perturbation is a computational prediction and requires experimental or orthogonal validation.
+- Overexpression of all genes can surface highly expressed housekeeping genes; biological interpretation should apply additional filters.
+
+12. Recommended Next Steps
+
+Technical next steps:
+1. Re-run the epithelial workflow with strict donor-exclusive splitting.
+2. Save validation and test metrics explicitly as CSV or JSON.
+3. Save confusion matrices and prediction summaries in a permanent output folder.
+4. Balance by donor and disease where feasible.
+5. Repeat training across multiple random seeds.
+6. Compare Geneformer V1 and V2 if compute resources allow.
+7. Run the streamlined script configuration in configs/sclc_epithelial_transition.json for reproducibility.
+
+Biological next steps:
+1. Prioritize perturbation hits using lung lineage and SCLC transformation biology.
+2. Cross-reference hits with known SCLC markers and lineage factors, including ASCL1, NEUROD1, POU2F3, YAP1, MYC family genes, RB1, TP53, NOTCH pathway genes, and epithelial-to-neuroendocrine transition markers.
+3. Compare LUAD-to-SCLC perturbation hits against differential expression between LUAD and SCLC epithelial cells.
+4. Perform pathway enrichment on positive and negative perturbation-shift genes separately.
+5. Deprioritize broadly expressed housekeeping genes unless they show specific disease-state or pathway relevance.
+6. Validate top candidates using independent datasets or perturbation experiments.
+
+13. Suggested Summary for Collaborators
+
+We performed a preliminary Geneformer analysis of lung-derived epithelial cells from LUAD and SCLC single-cell RNA-seq data. After filtering to 31,258 LUAD/SCLC epithelial cells, a Geneformer classifier was trained to distinguish LUAD from SCLC epithelial states. The model showed strong validation performance, with accuracy of 0.951 and macro-F1 of 0.941, indicating that epithelial tumor cells contain robust disease-specific transcriptional signal. We then extracted Geneformer embeddings and performed an all-gene overexpression perturbation screen to identify genes whose simulated overexpression shifts LUAD epithelial cells toward an SCLC-like state. The perturbation screen identified 1,059 significant genes after FDR and detection filtering, including examples such as SFTPC, TPT1, SLPI, PTMA, and ACTB as positive-shift genes, and B2M, S100A9, FTH1, RALGAPA2, and ITGB8 as negative-shift genes. These findings are hypothesis-generating and should be rerun with strict donor-level splitting, explicit saved metrics, and biological prioritization focused on lung epithelial lineage and SCLC transformation.

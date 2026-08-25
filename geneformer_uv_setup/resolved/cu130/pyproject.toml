@@ -1,0 +1,33 @@
+[project]
+name = "geneformer-analysis"
+version = "0.1.0"
+description = "Reproducible CUDA 13.0 Geneformer analysis environment"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+  "geneformer",
+  # Geneformer's setup.py leaves transformers unpinned while its requirements.txt
+  # pins 4.46. uv resolves from setup.py, so it picks transformers 5.x, which
+  # dropped SpecialTokensMixin and makes `import geneformer` fail. Pin it here to
+  # what upstream actually requires.
+  "transformers==4.46",
+  "ipykernel",
+  "jupyterlab",
+]
+
+[dependency-groups]
+dev = [
+  "pytest",
+  "ruff",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+geneformer = { path = "../Geneformer", editable = true }
+torch = [
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]

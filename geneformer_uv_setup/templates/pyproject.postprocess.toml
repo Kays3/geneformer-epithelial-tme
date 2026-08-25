@@ -1,0 +1,31 @@
+[project]
+name = "geneformer-postprocess"
+version = "0.1.0"
+description = "Post-hoc analysis of completed Geneformer runs: no GPU, no model, no Geneformer package"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+# Everything the post-run analyses need and nothing more. The denoising, donor
+# consistency, ambient-risk and spatial-validation scripts read the perturbation
+# output that already exists on disk; they never load a model or run inference,
+# so pulling in geneformer (and through it torch, and through tdigest a C
+# extension needing python3-dev) buys nothing and fails on a machine without
+# build headers.
+#
+# Use the cpu or cu130 profile instead when you need to RUN perturbations.
+dependencies = [
+  "numpy",
+  "pandas",
+  "scipy",
+  "scikit-learn",
+  "anndata",
+  "scanpy",
+  "matplotlib",
+  "pyarrow",
+  "ipykernel",
+]
+
+[dependency-groups]
+dev = [
+  "pytest",
+  "ruff",
+]

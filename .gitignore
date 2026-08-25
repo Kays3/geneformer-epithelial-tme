@@ -1,0 +1,135 @@
+# Python and Jupyter
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+.tmp-report/
+migration/migration.env
+migration/generated/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Geneformer inputs and generated datasets
+data/
+input_data/
+tokenized_data/
+*.h5ad
+*.loom
+*.arrow
+*.parquet
+
+# Training runs, caches, and experiment tracking
+runs_geneformer_v2/
+embedding_analysis/
+outputs/
+checkpoints/
+checkpoint-*/
+wandb/
+runs/
+events.out.tfevents*
+
+# Model weights and serialized intermediate results
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.pkl
+*.pickle
+
+# Generated figures and local archives
+# Curated, review-ready evidence is intentionally tracked under figures/.
+plots/
+*.tar
+*.tar.gz
+*.zip
+
+# ---------------------------------------------------------------------------
+# Large generated deliverables (> ~5 MB)
+#
+# Rendered posters are regenerated from tracked sources, and every export would
+# otherwise add a fresh multi-megabyte blob to history. They are ignored here;
+# `python tools/make_snapshots.py` writes a small PNG preview of each into
+# snapshots/, which IS tracked, so the repository still shows what was produced.
+# ---------------------------------------------------------------------------
+output/pdf/
+tmp/
+
+# Generated posters (HTML ~10 MB, PDF ~7 MB each, both regenerable from the
+# notebook). The templates are source and stay tracked.
+poster/poster_*.html
+poster/poster_*.pdf
+!poster/poster_template.html
+!poster/poster_template_90x210.html
+
+# PNG previews of the above are deliberately committed.
+!snapshots/
+!snapshots/*.png
+
+# Exception: source figures that notebooks read as inputs stay tracked even
+# when they exceed the size threshold. spatial_tissue_validation_panel.png is
+# 7.5 MB and is embedded by poster/generate_poster.ipynb; ignoring it, or
+# down-sampling it to fit, would break reproduction from a fresh clone
+# (palette quantisation to get under 5 MB introduced errors up to 61/255 on
+# the expression colour map).
+!sclc_validation/spatial_validation/figures/spatial_tissue_validation_panel.png
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# The poster and talk sources are kept out of the repository entirely, by
+# request - neither directory appears on GitHub. Both stay in the working tree
+# and are unaffected locally; this only controls what is published.
+#
+# Consequence worth knowing: the poster and the deck are no longer reproducible
+# from a clone. generate_poster.ipynb, poster_template.html, build_deck.js and
+# make_assets.py all live only on the machines that already have them, so they
+# are not backed up by this repository either. The figure generators under
+# tools/ and sclc_validation/*/scripts/ are NOT affected and stay tracked.
+poster/
+talk/
+
+# Built poster and talk artifacts. Sources are tracked, outputs are not:
+# everything below is reproducible from committed code, so it lives on disk
+# rather than in history.
+#
+#   node talk/build_deck.js        -> JSDP_P25_talk.pptx   (then export the PDF)
+#   python talk/make_assets.py     -> talk/assets/*.png
+#   poster/generate_poster.ipynb   -> poster/poster_*.html and .pdf
+#
+# talk/assets/*.png were previously kept tracked on the grounds that they are
+# inputs to build_deck.js rather than outputs, and losing them would leave a
+# clone unable to build the deck at all. make_assets.py removed that argument:
+# it rebuilds every asset from the poster's own figures, so they are now
+# derived files like the rest.
+talk/JSDP_P25_talk.pptx
+talk/JSDP_P25_talk.pdf
+talk/assets/*.png
+
+# Node dependencies for the talk-deck generator (talk/build_deck.js).
+node_modules/
+
+# Superseded poster drafts. Only the final poster's PNG preview is tracked;
+# every draft is regenerable from the notebook by setting DRAFT_LABEL.
+snapshots/poster__poster_draft_*.png
+
+# Snapshots: only the preview README.md puts on the repository's front page is
+# tracked. The full-board export's preview is not shown anywhere, and previews
+# of a git-ignored PDF are not worth carrying.
+snapshots/output__pdf__*.png
+poster/poster_draft_*
+poster/posterdown_draft*
+
+# R session leftovers
+.Rhistory

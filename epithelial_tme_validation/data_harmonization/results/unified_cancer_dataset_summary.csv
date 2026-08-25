@@ -1,0 +1,7 @@
+disease_state,source_atlas,n_cells
+LUAD,nsclc_integrated,56941
+LUAD,sclc_htan_epithelial_cells,3121
+LUSC,nsclc_integrated,24291
+SCLC,sclc_htan_sclc_epithelial_cells,54313
+normal,nsclc_integrated,41974
+normal,sclc_htan_epithelial_cells,758

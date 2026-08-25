@@ -1,0 +1,7 @@
+# No real run exists in this repo yet -- this file is a placeholder.
+# The content this file was copied from (geneformer-sclc-tcell's version)
+# actually contained the OLD combined repo's NSCLC T-cell hashes, not
+# anything specific to that repo either -- do not copy those values here,
+# they check the wrong model/data regardless of source. Populate with real
+# hashes from an actual inventory/checksum run (migration/scripts/inventory_source.sh)
+# once classifier_workflow/ produces a real fine-tuned model.
